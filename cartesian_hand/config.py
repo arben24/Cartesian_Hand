@@ -178,6 +178,12 @@ class HandConfig:
     # block that answers to tell one hand from another.
     first_servo_id: int = 0
 
+    # Servo count direction per DOF, +1/-1. Defaults to LAYOUT's, measured on
+    # the Duke units. Override only for a build whose servos are mounted the
+    # other way, after checking on the bench that the correct joint moves and
+    # only its direction is reversed (a swapped ID is a different bug).
+    orientation: Sequence[int] = ORIENTATION
+
     travel_mm: Sequence[float] = STANDARD_TRAVEL      # per DOF, from 0.0
     torque_min_to_move: Gain = STANDARD_TORQUE_MIN_TO_MOVE   # 0-1000; see above
     speed: Gain = STANDARD_SPEED
@@ -200,6 +206,10 @@ class HandConfig:
         if len(self.travel_mm) != N_DOF:
             raise ValueError(f"[{self.name}] travel_mm needs {N_DOF} values, "
                              f"got {len(self.travel_mm)}")
+        if len(self.orientation) != N_DOF or any(
+                o not in (1, -1) for o in self.orientation):
+            raise ValueError(f"[{self.name}] orientation needs {N_DOF} values "
+                             f"of +1 or -1, got {list(self.orientation)}")
         if any(t <= 0 for t in self.travel_mm):
             raise ValueError(f"[{self.name}] travel must be positive: "
                              f"{list(self.travel_mm)}")
@@ -262,7 +272,7 @@ class HandConfig:
         `mm_to_counts` apply it on the way in and out, so above that layer
         positive already means opening on both backends.
         """
-        return self._vec("orientations", list(ORIENTATION), MM, device)
+        return self._vec("orientations", list(self.orientation), MM, device)
 
     def gain_vector(self, gain: str, device: Device = "cpu") -> torch.Tensor:
         """One gain as a [J] int tensor, broadcasting a scalar.
@@ -482,6 +492,11 @@ FRANKA_HAND = HandConfig(
     # Our unit, mounted on the Franka arm. Servo IDs 21-27 in DOF order.
     port="/dev/serial/by-id/usb-1a86_USB_Single_Serial_5C84287281-if00",
     first_servo_id=21,
+
+    # DOFs 1, 2, 6 (IDs 22, 23, 27) are mounted the other way round from the
+    # Duke units: on the bench (2026-11-05) the correct finger moved, opposite
+    # to the model. The other four match LAYOUT's -1.
+    orientation=(-1, 1, 1, -1, -1, -1, 1),
 
     # NOT bisected on this unit yet -- hand_3's values, a floor known to move
     # real hardware. Re-bisect per DOF (5mm move, read travel after 3s).
