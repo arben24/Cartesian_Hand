@@ -477,7 +477,19 @@ HAND_3 = HandConfig(
     speed=(300, 300, 300, 500, 300, 300, 300),
 )
 
-HANDS = {h.name: h for h in (HAND_1, HAND_2, HAND_3)}
+FRANKA_HAND = HandConfig(
+    name="franka_hand",
+    # Our unit, mounted on the Franka arm. Servo IDs 21-27 in DOF order.
+    port="/dev/serial/by-id/usb-1a86_USB_Single_Serial_5C84287281-if00",
+    first_servo_id=21,
+
+    # NOT bisected on this unit yet -- hand_3's values, a floor known to move
+    # real hardware. Re-bisect per DOF (5mm move, read travel after 3s).
+    torque_min_to_move=(250, 250, 250, 800, 250, 250, 250),
+    speed=(300, 300, 300, 500, 300, 300, 300),
+)
+
+HANDS = {h.name: h for h in (HAND_1, HAND_2, HAND_3, FRANKA_HAND)}
 
 
 def get_hand(name: str = DEFAULT_HAND) -> HandConfig:
